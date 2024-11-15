@@ -488,7 +488,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let thread_id =
                     this.CreateThread(security, stacksize, start, arg, flags, thread)?;
 
-                this.write_scalar(Handle::Thread(thread_id.to_u32()).to_scalar(this), dest)?;
+                this.write_scalar(Handle::Thread(thread_id).to_scalar(this), dest)?;
             }
             "WaitForSingleObject" => {
                 let [handle, timeout] =
@@ -513,10 +513,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let handle = this.read_scalar(handle)?;
                 let name = this.read_wide_str(this.read_pointer(name)?)?;
 
-                let thread = match Handle::from_scalar(handle, this)? {
-                    Some(Handle::Thread(thread)) => this.thread_id_try_from(thread),
-                    Some(Handle::Pseudo(PseudoHandle::CurrentThread)) => Ok(this.active_thread()),
-                    _ => this.invalid_handle("SetThreadDescription")?,
+                let thread = match Handle::try_from_scalar(handle, this)? {
+                    Ok(Some(Handle::Thread(thread))) => Ok(thread),
+                    Ok(Some(Handle::Pseudo(PseudoHandle::CurrentThread))) =>
+                        Ok(this.active_thread()),
+                    Ok(_) => this.invalid_handle("SetThreadDescription")?,
+                    Err(e) => Err(e),
                 };
                 let res = match thread {
                     Ok(thread) => {
@@ -536,10 +538,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let handle = this.read_scalar(handle)?;
                 let name_ptr = this.deref_pointer(name_ptr)?; // the pointer where we should store the ptr to the name
 
-                let thread = match Handle::from_scalar(handle, this)? {
-                    Some(Handle::Thread(thread)) => this.thread_id_try_from(thread),
-                    Some(Handle::Pseudo(PseudoHandle::CurrentThread)) => Ok(this.active_thread()),
-                    _ => this.invalid_handle("GetThreadDescription")?,
+                let thread = match Handle::try_from_scalar(handle, this)? {
+                    Ok(Some(Handle::Thread(thread))) => Ok(thread),
+                    Ok(Some(Handle::Pseudo(PseudoHandle::CurrentThread))) => Ok(this.active_thread()),
+                    Ok(_) => this.invalid_handle("GetThreadDescription")?,
+                    Err(e) => Err(e),
                 };
                 let (name, res) = match thread {
                     Ok(thread) => {
