@@ -540,7 +540,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let thread = match Handle::try_from_scalar(handle, this)? {
                     Ok(Some(Handle::Thread(thread))) => Ok(thread),
-                    Ok(Some(Handle::Pseudo(PseudoHandle::CurrentThread))) => Ok(this.active_thread()),
+                    Ok(Some(Handle::Pseudo(PseudoHandle::CurrentThread))) =>
+                        Ok(this.active_thread()),
                     Ok(_) => this.invalid_handle("GetThreadDescription")?,
                     Err(e) => Err(e),
                 };
